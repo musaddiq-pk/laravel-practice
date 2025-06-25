@@ -40,6 +40,21 @@ services:
     networks:
       - laravel
 
+  queue:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: myapp-queue-worker
+    command: php artisan queue:work --verbose --tries=3 --timeout=90
+    volumes:
+      - ./my-app:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - app
+      - mysql
+    networks:
+      - laravel
+
 volumes:
   mysql-data:
 
