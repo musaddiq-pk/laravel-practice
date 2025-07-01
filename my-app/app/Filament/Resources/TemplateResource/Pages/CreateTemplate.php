@@ -18,7 +18,7 @@ class CreateTemplate extends CreateRecord
         $template = Template::create($data);
 
         // Dispatch another job after creation
-        TemplateJob::dispatch("Created Template ID: {$template->id}");
+        TemplateJob::dispatch("Created Template ID: {$template->id}", 101);
 
         return $template;
     }
