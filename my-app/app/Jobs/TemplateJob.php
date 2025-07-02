@@ -30,9 +30,17 @@ class TemplateJob implements ShouldQueue
      * Execute the job.
      */
     public function handle(): void
-    {   sleep(3);
+    {
+        sleep(3);
         Log::info("Queued Job Message: " . $this->message);
-        // Dispatch the event
-        broadcast(new JobCompleted("Job completed for user ID {$this->userId}", $this->userId));
+
+        // Test with PUBLIC channel first
+        Log::info("Broadcasting test public event");
+        broadcast(new \App\Events\TestPublicEvent("Test public message"));
+
+        // Your original private channel event
+        Log::info("Broadcasting private event");
+        broadcast(new JobCompleted('Job completed successfully!', 1));
+        //broadcast(new JobCompleted("Job completed for user ID {$this->userId}", $this->userId));
     }
 }

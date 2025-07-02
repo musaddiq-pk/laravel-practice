@@ -32,12 +32,21 @@ class JobCompleted implements ShouldBroadcast
      */
     public function broadcastOn(): Channel
     {
-        return new PrivateChannel('user.'.$this->userId);
-        //return new Channel('users');
+        return new Channel('job-updates');
+        // return new PrivateChannel('user.'.$this->userId);
     }
 
     public function broadcastAs(): string
     {
         return 'JobCompleted';
+    }
+
+    public function broadcastWith()
+    {
+        return [
+            'message' => $this->message,
+            'userId' => $this->userId,
+            'timestamp' => now()
+        ];
     }
 }

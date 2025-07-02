@@ -3,31 +3,59 @@
 use App\Events\JobCompleted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+// routes/web.php
 use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\Log;
-
-Route::get('/', function () {
-    return view('welcome');
-});
-
+use Pusher\Pusher;
 
 Route::get('/test-broadcast', function () {
-    $userId = auth()->id(); // Or use a test ID
-    broadcast(new JobCompleted("Test broadcast for user $userId", $userId));
-    return 'Event dispatched!';
+    broadcast(new JobCompleted('Test job completed!', 1));
+    return 'Event broadcasted!';
 });
 
-Route::post('/broadcasting/auth', function (Request $request) {
-//    Log::info('Broadcasting auth request', [
-//        'user' => auth()->user(),
-//        'channel_name' => $request->channel_name,
-//    ]);
+Route::post('/broadcasting/auth', function () {
+    $user = auth()->user();
 
-    $response = Broadcast::auth($request);
-    Log::info('Broadcasting auth Request', ['request' => $request]);
-    return $response;
-})->middleware(['web', 'auth']);
-//Broadcast::routes(['middleware' => ['web', 'auth']]);
-Broadcast::channel('user.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
-});
+    if (!$user) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    $socketId = request()->input('socket_id');
+    $channelName = request()->input('channel_name');
+
+    \Log::info('Broadcasting auth request', [
+        'user_id' => $user->id,
+        'socket_id' => $socketId,
+        'channel_name' => $channelName
+    ]);
+
+    // Handle both channel name formats
+    $allowedChannels = [
+        "private-user.{$user->id}",
+        "private-App.Models.User.{$user->id}"
+    ];
+
+    if (in_array($channelName, $allowedChannels)) {
+        $pusher = new Pusher(
+            config('broadcasting.connections.pusher.key'),
+            config('broadcasting.connections.pusher.secret'),
+            config('broadcasting.connections.pusher.app_id'),
+            [
+                'cluster' => config('broadcasting.connections.pusher.options.cluster'),
+                'useTLS' => true
+            ]
+        );
+
+        $auth = $pusher->socket_auth($channelName, $socketId);
+
+        //\Log::info('Broadcasting auth success', ['auth' => $auth]);
+
+        return response($auth);
+    }
+
+    \Log::error('Broadcasting auth failed - channel mismatch', [
+        'requested_channel' => $channelName,
+        'allowed_channels' => $allowedChannels
+    ]);
+    return response()->json(['error' => 'Forbidden'], 403);
+})->middleware('auth');
+
